@@ -17,6 +17,13 @@ export const metadata: Metadata = {
   description: "Retro-futuristic ASCII terminal portfolio of Jeffrey Wong.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#000000",
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

@@ -15,15 +15,22 @@ type HistoryEntry =
 
 type AiTurn = { role: "user" | "assistant"; content: string };
 
-/** Rule width scales with panel (max-w-6xl) */
-const W = 100;
-const rule = "#" + "=".repeat(W) + "#";
-
 /** Taller viewport so wrapped paragraphs need less scrolling (~7 lines) */
 const OUTPUT_MAX_H = "max-h-[7.25rem]";
 
+function RuleLine({ className }: { className?: string }) {
+  return (
+    <div
+      className={`px-2 font-mono text-[9px] sm:text-[10px] text-[#c8ffc8]/40 leading-none overflow-x-auto overflow-y-hidden sm:overflow-x-hidden [-webkit-overflow-scrolling:touch] ${className ?? ""}`}
+    >
+      <span className="md:hidden whitespace-pre">{`#${"=".repeat(34)}#`}</span>
+      <span className="hidden md:inline whitespace-pre">{`#${"=".repeat(100)}#`}</span>
+    </div>
+  );
+}
+
 const INPUT_TEXT_CLASS =
-  "font-mono text-xs leading-snug text-white";
+  "font-mono text-[11px] sm:text-xs leading-snug text-white";
 const T = "text-[#c8ffc8]";
 
 const HELP_RESPONSE = [
@@ -129,6 +136,13 @@ export default function AsciiTerminal() {
     consoleEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [history, pendingReply]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.matchMedia("(min-width: 768px)").matches) {
+      inputRef.current?.focus();
+    }
+  }, []);
+
   const focusInput = () => inputRef.current?.focus();
 
   const submitRemoteReply = async (raw: string) => {
@@ -207,23 +221,23 @@ export default function AsciiTerminal() {
 
   return (
     <div
-      className={`min-h-screen w-full bg-black font-mono ${T} flex flex-col items-center justify-end px-3 pb-6 pt-2 cursor-text select-none`}
+      className={`w-full flex-1 font-mono ${T} flex flex-col items-center justify-end px-2 sm:px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-1 sm:pt-2 cursor-text select-none min-h-0`}
       onClick={focusInput}
     >
-      <div className="w-full max-w-6xl flex flex-col border border-[#c8ffc8]/30">
-        <div className="flex items-center justify-between gap-2 px-2 py-0.5 border-b border-[#c8ffc8]/30 bg-[#c8ffc8]/5 text-[10px] text-[#c8ffc8]/60 tracking-widest uppercase">
-          <span className="truncate">JEFFREY-WONG.DEV — PORTFOLIO v1.0</span>
-          <span className="shrink-0 normal-case tracking-normal text-[#c8ffc8]/40">
+      <div className="w-full max-w-6xl flex flex-col border border-[#c8ffc8]/30 min-w-0">
+        <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2 px-2 py-1 sm:py-0.5 border-b border-[#c8ffc8]/30 bg-[#c8ffc8]/5 text-[9px] sm:text-[10px] text-[#c8ffc8]/60 tracking-wide sm:tracking-widest uppercase">
+          <span className="truncate min-w-0 text-left">
+            JEFFREY-WONG.DEV — v1.0
+          </span>
+          <span className="shrink-0 normal-case tracking-normal text-[#c8ffc8]/40 self-start sm:self-auto">
             [TTY0]
           </span>
         </div>
 
-        <div className="px-2 text-[10px] text-[#c8ffc8]/40 leading-none py-1">
-          {rule}
-        </div>
+        <RuleLine className="py-1" />
 
         {bootLinesVisible && (
-          <div className="px-2 pb-1 text-xs leading-snug text-[#c8ffc8]/80 space-y-0.5">
+          <div className="px-2 pb-1 text-[11px] sm:text-xs leading-snug text-[#c8ffc8]/80 space-y-0.5 break-words">
             <p>
               <span className="text-[#c8ffc8]/40">[ SYS ] </span>
               system initiated. welcome to jeffrey wong&apos;s portfolio
@@ -238,7 +252,7 @@ export default function AsciiTerminal() {
 
         {history.length > 0 && (
           <div
-            className={`px-2 py-1 ${OUTPUT_MAX_H} overflow-y-auto overflow-x-hidden space-y-1.5 text-xs leading-relaxed border-t border-[#c8ffc8]/15 min-h-0`}
+            className={`px-2 py-1 ${OUTPUT_MAX_H} overflow-y-auto overflow-x-hidden space-y-1.5 text-[11px] sm:text-xs leading-relaxed border-t border-[#c8ffc8]/15 min-h-0 overscroll-y-contain [-webkit-overflow-scrolling:touch]`}
           >
             {history.map((entry, i) =>
               entry.type === "command" ? (
@@ -271,11 +285,9 @@ export default function AsciiTerminal() {
           <div ref={consoleEndRef} className="hidden" aria-hidden />
         )}
 
-        <div className="px-2 text-[10px] text-[#c8ffc8]/40 leading-none py-0.5">
-          {rule}
-        </div>
+        <RuleLine className="py-0.5" />
 
-        <div className="px-2 py-1 flex flex-nowrap items-baseline gap-x-1.5 text-xs w-full min-w-0 overflow-x-auto">
+        <div className="px-2 py-1.5 sm:py-1 flex flex-nowrap items-baseline gap-x-1.5 text-[11px] sm:text-xs w-full min-w-0 overflow-x-auto touch-pan-x [-webkit-overflow-scrolling:touch]">
           <span className="text-[#c8ffc8]/60 shrink-0">&gt;</span>
           <div className="relative flex-1 min-w-0 min-h-[1.2em]">
             <span
@@ -296,7 +308,7 @@ export default function AsciiTerminal() {
               onKeyUp={syncCaret}
               onClick={syncCaret}
               onSelect={syncCaret}
-              autoFocus
+              enterKeyHint="send"
               spellCheck={false}
               autoComplete="off"
               autoCorrect="off"
@@ -315,9 +327,7 @@ export default function AsciiTerminal() {
           </div>
         </div>
 
-        <div className="px-2 text-[10px] text-[#c8ffc8]/40 leading-none pb-1">
-          {rule}
-        </div>
+        <RuleLine className="pb-1" />
       </div>
     </div>
   );
