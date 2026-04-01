@@ -3,17 +3,18 @@ import { NextResponse } from "next/server";
 type ChatMessage = { role: "user" | "assistant" | "system"; content: string };
 
 const SYSTEM_PROMPT = `You are the assistant behind Jeffrey Wong's retro ASCII terminal portfolio.
-Answer in a concise, terminal-friendly way (short lines, monospace-friendly; use line breaks when helpful).
+Write in a concise, natural way. Prefer wide, flowing paragraphs: keep each thought on one continuous line of prose and let the reader's screen wrap it—do not insert line breaks every few words or after every short phrase.
+Use a blank line only between distinct topics or sections. For bullet lists you may use one line per item, but avoid choppy single-word lines.
 You may mention projects: CourtVision (basketball / CV), Polymolt (games), BeaverTrails (trails).
 If the user asks how to navigate, suggest typing 'help' for a list of local commands.`;
 
 export async function POST(req: Request) {
-  const key = process.env.CHAT_API_KEY ?? process.env.GROQ_API_KEY;
+  const key = process.env.GROQ_API_KEY ?? process.env.CHAT_API_KEY;
   if (!key) {
     return NextResponse.json(
       {
         error:
-          "Server missing API key. Add CHAT_API_KEY to .env.local and restart the dev server.",
+          "Server missing API key. Add it to .env.local and restart the dev server.",
       },
       { status: 503 }
     );
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
     body: JSON.stringify({
       model: "llama-3.3-70b-versatile",
       messages,
-      max_tokens: 1024,
+      max_tokens: 2048,
       temperature: 0.65,
     }),
   });

@@ -11,16 +11,19 @@ import {
 
 type HistoryEntry =
   | { type: "command"; text: string }
-  | { type: "response"; lines: string[] };
+  | { type: "response"; lines: string[]; flow?: boolean };
 
 type AiTurn = { role: "user" | "assistant"; content: string };
 
-const W = 48;
+/** Rule width scales with panel (max-w-6xl) */
+const W = 100;
 const rule = "#" + "=".repeat(W) + "#";
 
-/** User typing only — rest of terminal uses mint green palette */
+/** Taller viewport so wrapped paragraphs need less scrolling (~7 lines) */
+const OUTPUT_MAX_H = "max-h-[7.25rem]";
+
 const INPUT_TEXT_CLASS =
-  "font-mono text-xs leading-tight text-white";
+  "font-mono text-xs leading-snug text-white";
 const T = "text-[#c8ffc8]";
 
 const HELP_RESPONSE = [
@@ -78,15 +81,22 @@ function localCommandLines(raw: string): string[] | null {
   return null;
 }
 
-function splitReplyLines(text: string): string[] {
-  return text.split(/\r?\n/).filter((l, i, a) => l.length > 0 || i < a.length - 1);
+/** Collapse model “staircase” newlines into paragraphs; each string wraps in the panel. */
+function flowAssistantReply(text: string): string[] {
+  const t = text.trim();
+  if (!t) return [];
+  return t
+    .split(/\n\s*\n+/)
+    .map((p) => p.replace(/[ \t]*\r?\n[ \t]*/g, " ").replace(/\s+/g, " ").trim())
+    .filter(Boolean);
 }
 
 export default function AsciiTerminal() {
   const [input, setInput] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [aiTurns, setAiTurns] = useState<AiTurn[]>([]);
-  const [groqPending, setGroqPending] = useState(false);
+  const [bootLinesVisible, setBootLinesVisible] = useState(true);
+  const [pendingReply, setPendingReply] = useState(false);
   const [blink, setBlink] = useState(true);
   const [caretPx, setCaretPx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -117,12 +127,12 @@ export default function AsciiTerminal() {
 
   useEffect(() => {
     consoleEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [history, groqPending]);
+  }, [history, pendingReply]);
 
   const focusInput = () => inputRef.current?.focus();
 
-  const submitGroq = async (raw: string) => {
-    setGroqPending(true);
+  const submitRemoteReply = async (raw: string) => {
+    setPendingReply(true);
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -137,16 +147,20 @@ export default function AsciiTerminal() {
         const msg = data.error || `Request failed (${res.status})`;
         setHistory((prev) => [
           ...prev,
-          { type: "response", lines: ["> [ GROQ ] Error", `  ${msg}`] },
+          { type: "response", lines: ["> Error", `  ${msg}`] },
         ]);
         return;
       }
       const reply = data.reply || "";
-      const linesRaw = splitReplyLines(reply);
-      const lines = linesRaw.length > 0 ? linesRaw : ["(empty response)"];
+      const blocks = flowAssistantReply(reply);
+      const lines = blocks.length > 0 ? blocks : ["(empty response)"];
       setHistory((prev) => [
         ...prev,
-        { type: "response", lines: ["> [ GROQ ]", ...lines.map((l) => `  ${l}`)] },
+        {
+          type: "response",
+          lines: lines.map((l) => `  ${l}`),
+          flow: true,
+        },
       ]);
       setAiTurns((prev) => [
         ...prev,
@@ -157,10 +171,10 @@ export default function AsciiTerminal() {
       const msg = e instanceof Error ? e.message : "Network error";
       setHistory((prev) => [
         ...prev,
-        { type: "response", lines: ["> [ GROQ ] Error", `  ${msg}`] },
+        { type: "response", lines: ["> Error", `  ${msg}`] },
       ]);
     } finally {
-      setGroqPending(false);
+      setPendingReply(false);
     }
   };
 
@@ -177,6 +191,8 @@ export default function AsciiTerminal() {
       return;
     }
 
+    setBootLinesVisible(false);
+
     const local = localCommandLines(raw);
     setHistory((prev) => [...prev, { type: "command", text: raw }]);
     setInput("");
@@ -186,7 +202,7 @@ export default function AsciiTerminal() {
       return;
     }
 
-    void submitGroq(raw);
+    void submitRemoteReply(raw);
   };
 
   return (
@@ -194,7 +210,7 @@ export default function AsciiTerminal() {
       className={`min-h-screen w-full bg-black font-mono ${T} flex flex-col items-center justify-end px-3 pb-6 pt-2 cursor-text select-none`}
       onClick={focusInput}
     >
-      <div className="w-full max-w-xl flex flex-col border border-[#c8ffc8]/30">
+      <div className="w-full max-w-6xl flex flex-col border border-[#c8ffc8]/30">
         <div className="flex items-center justify-between gap-2 px-2 py-0.5 border-b border-[#c8ffc8]/30 bg-[#c8ffc8]/5 text-[10px] text-[#c8ffc8]/60 tracking-widest uppercase">
           <span className="truncate">JEFFREY-WONG.DEV — PORTFOLIO v1.0</span>
           <span className="shrink-0 normal-case tracking-normal text-[#c8ffc8]/40">
@@ -206,19 +222,24 @@ export default function AsciiTerminal() {
           {rule}
         </div>
 
-        <div className="px-2 pb-1 text-xs leading-snug text-[#c8ffc8]/80 space-y-0.5">
-          <p>
-            <span className="text-[#c8ffc8]/40">[ SYS ] </span>
-            system initiated. welcome to jeffrey wong&apos;s portfolio
-          </p>
-          <p>
-            <span className="text-[#c8ffc8]/40">[ SYS ] </span>
-            type &apos;help&apos; for commands; other input goes to groq.
-          </p>
-        </div>
+        {bootLinesVisible && (
+          <div className="px-2 pb-1 text-xs leading-snug text-[#c8ffc8]/80 space-y-0.5">
+            <p>
+              <span className="text-[#c8ffc8]/40">[ SYS ] </span>
+              system initiated. welcome to jeffrey wong&apos;s portfolio
+            </p>
+            <p>
+              <span className="text-[#c8ffc8]/40">[ SYS ] </span>
+              type &apos;help&apos; for commands; anything else gets a reply
+              here.
+            </p>
+          </div>
+        )}
 
         {history.length > 0 && (
-          <div className="px-2 py-1 max-h-[120px] overflow-y-auto space-y-0.5 text-xs leading-snug border-t border-[#c8ffc8]/15">
+          <div
+            className={`px-2 py-1 ${OUTPUT_MAX_H} overflow-y-auto overflow-x-hidden space-y-1.5 text-xs leading-relaxed border-t border-[#c8ffc8]/15 min-h-0`}
+          >
             {history.map((entry, i) =>
               entry.type === "command" ? (
                 <p key={i} className={`${T} pt-1 first:pt-0`}>
@@ -227,14 +248,21 @@ export default function AsciiTerminal() {
                 </p>
               ) : (
                 entry.lines.map((line, j) => (
-                  <p key={`${i}-${j}`} className="text-[#c8ffc8]/80 pl-1">
+                  <p
+                    key={`${i}-${j}`}
+                    className={
+                      entry.flow
+                        ? "text-[#c8ffc8]/80 pl-1 break-words [word-break:break-word]"
+                        : "text-[#c8ffc8]/80 pl-1 whitespace-pre-wrap"
+                    }
+                  >
                     {line}
                   </p>
                 ))
               )
             )}
-            {groqPending && (
-              <p className="text-[#c8ffc8]/55 pl-1">[ GROQ ] …</p>
+            {pendingReply && (
+              <p className="text-[#c8ffc8]/55 pl-1">…</p>
             )}
             <div ref={consoleEndRef} />
           </div>
@@ -259,7 +287,7 @@ export default function AsciiTerminal() {
               ref={inputRef}
               type="text"
               value={input}
-              disabled={groqPending}
+              disabled={pendingReply}
               onChange={(e) => {
                 setInput(e.target.value);
                 requestAnimationFrame(() => syncCaret());
@@ -279,7 +307,7 @@ export default function AsciiTerminal() {
               className="pointer-events-none absolute z-20 top-[0.12em] w-[6px] h-[0.9em] bg-white"
               style={{
                 left: caretPx,
-                opacity: blink && !groqPending ? 1 : 0,
+                opacity: blink && !pendingReply ? 1 : 0,
                 transition: "opacity 0.05s",
               }}
               aria-hidden
