@@ -166,20 +166,26 @@ export default function AsciiBasketball() {
   }, []);
 
   return (
-    <div
-      className="w-full flex justify-center items-center py-1 px-2 touch-none cursor-grab active:cursor-grabbing select-none"
-      onPointerDown={onDown}
-      onPointerMove={onMove}
-      onPointerUp={onUp}
-      onPointerCancel={onUp}
-    >
-      <pre
-        ref={preRef}
-        className="font-mono text-[#c8ffc8] text-[4.5px] sm:text-[5.5px] md:text-[6px] leading-[1.08] whitespace-pre pointer-events-none overflow-hidden"
-        aria-label="Interactive ASCII basketball — drag to rotate"
+    <div className="flex flex-col items-center justify-center w-full max-w-full gap-3 sm:gap-4">
+      <div
+        className="flex justify-center touch-none cursor-grab active:cursor-grabbing select-none"
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
       >
-        {"\n".repeat(ROWS / 2)}
-      </pre>
+        <pre
+          ref={preRef}
+          className="font-mono text-[#c8ffc8] text-[4.5px] sm:text-[5.5px] md:text-[6px] leading-[1.08] whitespace-pre pointer-events-none overflow-hidden mx-auto"
+          aria-label="Interactive ASCII basketball — drag to rotate"
+        >
+          {"\n".repeat(ROWS / 2)}
+        </pre>
+      </div>
+      <p className="text-center font-mono text-[10px] sm:text-xs text-[#c8ffc8]/55 max-w-md px-4 leading-relaxed">
+        Live 3D scan → ASCII frame buffer. Drag or swipe to spin the ball.
+        <span className="text-[#c8ffc8]/35"> Ask the terminal below if you want the longer story.</span>
+      </p>
     </div>
   );
 }

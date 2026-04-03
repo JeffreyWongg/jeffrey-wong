@@ -221,7 +221,7 @@ export default function AsciiTerminal() {
 
   return (
     <div
-      className={`w-full flex-1 font-mono ${T} flex flex-col items-center justify-end px-2 sm:px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-1 sm:pt-2 cursor-text select-none min-h-0`}
+      className={`w-full font-mono ${T} flex flex-col items-center justify-end px-2 sm:px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-1 sm:pt-2 cursor-text select-none`}
       onClick={focusInput}
     >
       <div className="w-full max-w-6xl flex flex-col border border-[#c8ffc8]/30 min-w-0">
